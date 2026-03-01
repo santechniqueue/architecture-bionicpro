@@ -65,6 +65,17 @@ services:
       - ./keycloak/configure-ldap.sh:/opt/keycloak/configure-ldap.sh
     entrypoint: ["/bin/sh", "/opt/keycloak/configure-ldap.sh"]
 
+  keycloak-mfa-init:
+    image: quay.io/keycloak/keycloak:21.1
+    depends_on:
+      keycloak:
+        condition: service_started
+      keycloak-ldap-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./keycloak/configure-mfa.sh:/opt/keycloak/configure-mfa.sh:ro
+    entrypoint: [ "/bin/sh", "/opt/keycloak/configure-mfa.sh" ]
+
   redis:
     image: redis:7-alpine
     ports:
