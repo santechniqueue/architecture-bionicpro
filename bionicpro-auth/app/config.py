@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     app_port: int = 8000
 
     frontend_url: str = "http://localhost:3000"
-    reports_api_url: str = "http://host.docker.internal:8000"
+    reports_api_url: str = "http://reports-api:8001"
 
     keycloak_internal_base_url: str = "http://keycloak:8080"
     keycloak_public_base_url: str = "http://localhost:8080"
@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     keycloak_client_secret: str = "change-me"
 
     session_cookie_name: str = "bp_session"
-    session_cookie_secure: bool = False
+    session_cookie_secure: bool = True
     session_cookie_httponly: bool = True
     session_cookie_samesite: str = "lax"
     session_ttl_seconds: int = 1800
@@ -40,3 +40,10 @@ class Settings(BaseSettings):
 
     rotate_session_every_request: bool = True
     refresh_access_token_skew_seconds: int = 15
+
+    database_url: str = (
+        "postgresql+psycopg2://keycloak_user:keycloak_password@keycloak_db:5432/keycloak_db"
+    )
+    database_schema: str = "bionicpro_auth"
+
+    yandex_idp_alias: str = "yandex"

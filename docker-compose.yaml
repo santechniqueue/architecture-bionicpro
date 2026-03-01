@@ -59,8 +59,10 @@ services:
   keycloak-ldap-init:
     image: quay.io/keycloak/keycloak:21.1
     depends_on:
-      - keycloak
-      - ldap
+      keycloak:
+        condition: service_started
+      ldap:
+        condition: service_healthy
     volumes:
       - ./keycloak/configure-ldap.sh:/opt/keycloak/configure-ldap.sh
     entrypoint: ["/bin/sh", "/opt/keycloak/configure-ldap.sh"]
@@ -73,8 +75,35 @@ services:
       keycloak-ldap-init:
         condition: service_completed_successfully
     volumes:
-      - ./keycloak/configure-mfa.sh:/opt/keycloak/configure-mfa.sh:ro
+      - ./keycloak/configure-mfa.sh:/opt/keycloak/configure-mfa.sh
     entrypoint: [ "/bin/sh", "/opt/keycloak/configure-mfa.sh" ]
+
+  keycloak-yandex-init:
+    image: quay.io/keycloak/keycloak:21.1
+    depends_on:
+      keycloak:
+        condition: service_started
+      keycloak-ldap-init:
+        condition: service_completed_successfully
+      keycloak-mfa-init:
+        condition: service_completed_successfully
+    environment:
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_REALM: reports-realm
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+
+      YANDEX_IDP_ALIAS: yandex
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET}
+      YANDEX_OIDC_ISSUER: ${YANDEX_OIDC_ISSUER}
+      YANDEX_OIDC_AUTH_URL: ${YANDEX_OIDC_AUTH_URL}
+      YANDEX_OIDC_TOKEN_URL: ${YANDEX_OIDC_TOKEN_URL}
+      YANDEX_OIDC_USERINFO_URL: ${YANDEX_OIDC_USERINFO_URL}
+      YANDEX_OIDC_JWKS_URL: ${YANDEX_OIDC_JWKS_URL}
+    volumes:
+      - ./keycloak/configure-yandex-id.sh:/opt/keycloak/configure-yandex-id.sh
+    entrypoint: [ "/bin/sh", "/opt/keycloak/configure-yandex-id.sh" ]
 
   redis:
     image: redis:7-alpine
@@ -109,6 +138,8 @@ services:
       REFRESH_TOKEN_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
       ROTATE_SESSION_EVERY_REQUEST: "true"
       REFRESH_ACCESS_TOKEN_SKEW_SECONDS: "15"
+      DATABASE_URL: postgresql+psycopg2://keycloak_user:keycloak_password@keycloak_db:5432/keycloak_db
+      DATABASE_SCHEMA: bionicpro_auth
     ports:
       - "8000:8000"
     depends_on:

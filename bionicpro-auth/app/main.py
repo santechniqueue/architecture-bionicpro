@@ -16,6 +16,8 @@ from app.dependencies import (
 from app.keycloak_client import KeycloakClient
 from app.models import SessionData
 from app.session_store import SessionStore
+from app.db import init_db, SessionLocal
+from app.profile_repository import YandexProfileRepository
 
 app = FastAPI(title="bionicpro-auth")
 
@@ -50,6 +52,26 @@ def validate_return_to(value: str, fallback: str) -> str:
     except Exception:
         pass
     return fallback
+
+
+def persist_yandex_profile(user) -> None:
+    if not getattr(user, "is_yandex_user", False):
+        return
+
+    db = SessionLocal()
+    try:
+        YandexProfileRepository(db).upsert_from_userinfo(user)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    init_db()
 
 
 @app.get("/health")
@@ -148,6 +170,7 @@ async def auth_callback(
             },
         ) from exc
 
+    persist_yandex_profile(user)
     session = store.create_session(user=user, token_payload=token_payload)
 
     redirect = RedirectResponse(url=return_to, status_code=status.HTTP_302_FOUND)

@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class TokenPayload(BaseModel):
@@ -38,12 +38,22 @@ class AuthStatePayload(BaseModel):
 
 
 class UserInfo(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     sub: str | None = None
     preferred_username: str | None = None
     email: str | None = None
     given_name: str | None = None
     family_name: str | None = None
     realm_access: dict[str, Any] | None = None
+
+    yandex_id: str | None = None
+    yandex_login: str | None = None
+    yandex_psuid: str | None = None
+    yandex_default_email: str | None = None
+    yandex_display_name: str | None = None
+    yandex_real_name: str | None = None
+    yandex_avatar_id: str | None = None
 
     @property
     def roles(self) -> list[str]:
@@ -53,3 +63,7 @@ class UserInfo(BaseModel):
         if isinstance(raw_roles, list):
             return [str(role) for role in raw_roles]
         return []
+
+    @property
+    def is_yandex_user(self) -> bool:
+        return bool(self.yandex_id or self.yandex_login or self.yandex_psuid)
