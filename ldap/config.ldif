@@ -28,12 +28,20 @@ uid: jane.smith
 mail: jane@example.com
 userPassword: password
 
-dn: uid=alex,ou=People,dc=example,dc=com
+dn: uid=alex.johnson,ou=People,dc=example,dc=com
 objectClass: inetOrgPerson
 cn: Alex
 sn: Johnson
 uid: alex.johnson
 mail: alex@example.com
+userPassword: password
+
+dn: uid=jimmy.neutron,ou=People,dc=example,dc=com
+objectClass: inetOrgPerson
+cn: Jimmy
+sn: Neutron
+uid: jimmy.neutron
+mail: jimmy@example.com
 userPassword: password
 
 # Роли
@@ -47,3 +55,8 @@ objectClass: groupOfNames
 cn: prothetic_user
 member: uid=alex.johnson,ou=People,dc=example,dc=com
 member: uid=john.doe,ou=People,dc=example,dc=com
+
+dn: cn=administrator,ou=Groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: administrator
+member: uid=jimmy.neutron,ou=People,dc=example,dc=com

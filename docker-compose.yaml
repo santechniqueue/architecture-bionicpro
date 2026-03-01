@@ -1,6 +1,22 @@
-version: '3.8'
-
 services:
+  ldap:
+    build:
+      context: ./ldap
+      dockerfile: Dockerfile
+    environment:
+      LDAP_ORGANISATION: BionicPRO Foreign Office
+      LDAP_DOMAIN: example.com
+      LDAP_ADMIN_PASSWORD: admin
+      LDAP_CONFIG_PASSWORD: config
+      LDAP_TLS: "false"
+    ports:
+      - "389:389"
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost:389 -D 'cn=admin,dc=example,dc=com' -w admin -b 'dc=example,dc=com' '(objectClass=*)' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   keycloak_db:
     image: postgres:14
     environment:
@@ -11,6 +27,12 @@ services:
       - ./postgres-keycloak-data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U keycloak_user -d keycloak_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   keycloak:
     image: quay.io/keycloak/keycloak:21.1
     environment:
@@ -29,7 +51,19 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - keycloak_db
+      keycloak_db:
+        condition: service_healthy
+      ldap:
+        condition: service_healthy
+
+  keycloak-ldap-init:
+    image: quay.io/keycloak/keycloak:21.1
+    depends_on:
+      - keycloak
+      - ldap
+    volumes:
+      - ./keycloak/configure-ldap.sh:/opt/keycloak/configure-ldap.sh
+    entrypoint: ["/bin/sh", "/opt/keycloak/configure-ldap.sh"]
 
   redis:
     image: redis:7-alpine
