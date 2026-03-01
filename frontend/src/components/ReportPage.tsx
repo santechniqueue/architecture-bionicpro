@@ -1,69 +1,95 @@
-import React, { useState } from 'react';
-import { useKeycloak } from '@react-keycloak/web';
+import React, { useEffect, useState } from 'react';
+import { downloadReport, getSession, login, logout } from '../api/auth';
 
 const ReportPage: React.FC = () => {
-  const { keycloak, initialized } = useKeycloak();
+  const [initialized, setInitialized] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [username, setUsername] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string>('');
 
-  const downloadReport = async () => {
-    if (!keycloak?.token) {
-      setError('Not authenticated');
-      return;
-    }
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const session = await getSession();
+        setAuthenticated(session.authenticated);
+        setUsername(session.username || '');
+      } catch (err) {
+        setAuthenticated(false);
+        setError(err instanceof Error ? err.message : 'Unable to check session');
+      } finally {
+        setInitialized(true);
+      }
+    };
 
+    void loadSession();
+  }, []);
+
+  const handleDownload = async () => {
     try {
       setLoading(true);
-      setError(null);
-
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/reports`, {
-        headers: {
-          'Authorization': `Bearer ${keycloak.token}`
-        }
-      });
-
-      
+      setError('');
+      await downloadReport();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      setAuthenticated(false);
     } finally {
       setLoading(false);
     }
   };
 
   if (!initialized) {
-    return <div>Loading...</div>;
+    return <div className="p-8 text-lg">Loading...</div>;
   }
 
-  if (!keycloak.authenticated) {
+  if (!authenticated) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-        <button
-          onClick={() => keycloak.login()}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Login
-        </button>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="bg-white rounded-lg shadow-md p-8 w-full max-w-md text-center">
+          <h1 className="text-2xl font-bold mb-6">Usage Reports</h1>
+          <button
+            onClick={login}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Login
+          </button>
+          {error && (
+            <div className="mt-4 text-red-600">
+              {error}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="p-8 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold mb-6">Usage Reports</h1>
-        
-        <button
-          onClick={downloadReport}
-          disabled={loading}
-          className={`px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 ${
-            loading ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
-        >
-          {loading ? 'Generating Report...' : 'Download Report'}
-        </button>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="bg-white rounded-lg shadow-md p-8 w-full max-w-md text-center">
+        <h1 className="text-2xl font-bold mb-2">Usage Reports</h1>
+        <div className="text-sm text-gray-500 mb-6">
+          Logged in as {username || 'user'}
+        </div>
+
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={handleDownload}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300"
+          >
+            {loading ? 'Generating Report...' : 'Download Report'}
+          </button>
+
+          <button
+            onClick={() => void logout()}
+            className="px-4 py-2 bg-gray-200 text-gray-900 rounded hover:bg-gray-300"
+          >
+            Logout
+          </button>
+        </div>
 
         {error && (
-          <div className="mt-4 p-4 bg-red-100 text-red-700 rounded">
+          <div className="mt-4 text-red-600">
             {error}
           </div>
         )}

@@ -20,7 +20,8 @@ services:
       KC_DB_URL: jdbc:postgresql://keycloak_db:5432/keycloak_db
       KC_DB_USERNAME: keycloak_user
       KC_DB_PASSWORD: keycloak_password
-    command: 
+      KC_HOSTNAME_DEBUG: "true"
+    command:
       - start-dev
       - --import-realm
     volumes:
@@ -29,14 +30,46 @@ services:
       - "8080:8080"
     depends_on:
       - keycloak_db
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  bionicpro-auth:
+    build:
+      context: ./bionicpro-auth
+      dockerfile: Dockerfile
+    environment:
+      FRONTEND_URL: http://localhost:3000
+      REPORTS_API_URL: http://host.docker.internal:8000
+      KEYCLOAK_INTERNAL_BASE_URL: http://host.docker.internal:8080
+      KEYCLOAK_PUBLIC_BASE_URL: http://localhost:8080
+      KEYCLOAK_REALM: reports-realm
+      KEYCLOAK_CLIENT_ID: bionicpro-auth
+      KEYCLOAK_CLIENT_SECRET: super-secret-auth-client
+      SESSION_COOKIE_NAME: bp_session
+      SESSION_COOKIE_SECURE: "false"
+      SESSION_COOKIE_HTTPONLY: "true"
+      SESSION_COOKIE_SAMESITE: lax
+      SESSION_TTL_SECONDS: "1800"
+      REDIS_URL: redis://redis:6379/0
+      REFRESH_TOKEN_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
+      ROTATE_SESSION_EVERY_REQUEST: "true"
+      REFRESH_ACCESS_TOKEN_SKEW_SECONDS: "15"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - keycloak
+      - redis
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
+    depends_on:
+      - bionicpro-auth
     environment:
       REACT_APP_API_URL: http://localhost:8000
-      REACT_APP_KEYCLOAK_URL: http://localhost:8080
-      REACT_APP_KEYCLOAK_REALM: reports-realm
-      REACT_APP_KEYCLOAK_CLIENT_ID: reports-frontend
