@@ -5,15 +5,14 @@ export interface SessionInfo {
   roles?: string[];
 }
 
-const AUTH_URL = '';
 
 export const login = (): void => {
   const returnTo = window.location.origin;
-  window.location.href = `${AUTH_URL}/auth/login?return_to=${encodeURIComponent(returnTo)}`;
+  window.location.href = `/auth/login?return_to=${encodeURIComponent(returnTo)}`;
 };
 
 export const logout = async (): Promise<void> => {
-  await fetch(`${AUTH_URL}/auth/logout`, {
+  await fetch(`/auth/logout`, {
     method: 'POST',
     credentials: 'include',
   });
@@ -21,7 +20,7 @@ export const logout = async (): Promise<void> => {
 };
 
 export const getSession = async (): Promise<SessionInfo> => {
-  const response = await fetch(`${AUTH_URL}/auth/me`, {
+  const response = await fetch(`/auth/me`, {
     method: 'GET',
     credentials: 'include',
   });
@@ -34,7 +33,7 @@ export const getSession = async (): Promise<SessionInfo> => {
 };
 
 export const downloadReport = async (): Promise<void> => {
-  const response = await fetch(`${AUTH_URL}/reports`, {
+  const response = await fetch(`/reports`, {
     method: 'GET',
     credentials: 'include',
   });

@@ -208,10 +208,12 @@ async def logout(
 
 @app.get("/reports")
 async def proxy_reports(
+    request: Request,
     response: Response,
     session: SessionData = Depends(get_current_session),
     cfg: Settings = Depends(get_settings),
 ):
+    print("REPORTS COOKIE HEADER:", request.headers.get("cookie"))
     headers = {
         "Authorization": f"Bearer {session.access_token}",
         "Accept": "application/octet-stream,application/json,text/plain,*/*",

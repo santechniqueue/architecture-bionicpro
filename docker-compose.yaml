@@ -36,13 +36,20 @@ services:
     ports:
       - "6379:6379"
 
+  reports-api:
+    build:
+      context: ./reports-api
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+
   bionicpro-auth:
     build:
       context: ./bionicpro-auth
       dockerfile: Dockerfile
     environment:
       FRONTEND_URL: http://localhost:3000
-      REPORTS_API_URL: http://host.docker.internal:8000
+      REPORTS_API_URL: http://reports-api:8001
       KEYCLOAK_INTERNAL_BASE_URL: http://host.docker.internal:8080
       KEYCLOAK_PUBLIC_BASE_URL: http://localhost:8080
       KEYCLOAK_REALM: reports-realm
@@ -62,6 +69,7 @@ services:
     depends_on:
       - keycloak
       - redis
+      - reports-api
 
   frontend:
     build:
@@ -71,5 +79,3 @@ services:
       - "3000:3000"
     depends_on:
       - bionicpro-auth
-    environment:
-      REACT_APP_API_URL: http://localhost:8000
