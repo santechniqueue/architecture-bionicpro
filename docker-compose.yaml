@@ -110,12 +110,110 @@ services:
     ports:
       - "6379:6379"
 
+  crm_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: crm_db
+      POSTGRES_USER: crm_user
+      POSTGRES_PASSWORD: crm_password
+    volumes:
+      - crm-data:/var/lib/postgresql/data
+      - ./postgres-crm/init:/docker-entrypoint-initdb.d
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm_user -d crm_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  oltp_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: oltp_db
+      POSTGRES_USER: oltp_user
+      POSTGRES_PASSWORD: oltp_password
+    volumes:
+      - oltp-data:/var/lib/postgresql/data
+      - ./postgres-oltp/init:/docker-entrypoint-initdb.d
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oltp_user -d oltp_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  data-generator:
+    build:
+      context: ./scripts
+      dockerfile: Dockerfile
+    environment:
+      CRM_DATABASE_URL: postgresql://crm_user:crm_password@crm_db:5432/crm_db
+      OLTP_DATABASE_URL: postgresql://oltp_user:oltp_password@oltp_db:5432/oltp_db
+    depends_on:
+      crm_db:
+        condition: service_healthy
+      oltp_db:
+        condition: service_healthy
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./clickhouse/init:/docker-entrypoint-initdb.d
+      - ./clickhouse/config/users.xml:/etc/clickhouse-server/users.d/default-password.xml
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --query 'SELECT 1'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  airflow:
+    image: apache/airflow:2.10.4-python3.11
+    environment:
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+      AIRFLOW__CORE__FERNET_KEY: ""
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      _PIP_ADDITIONAL_REQUIREMENTS: "clickhouse-connect==0.8.14 apache-airflow-providers-postgres==5.13.1 apache-airflow-providers-http==4.13.2"
+      AIRFLOW_CONN_CRM_POSTGRES: postgresql://crm_user:crm_password@crm_db:5432/crm_db
+      AIRFLOW_CONN_OLTP_POSTGRES: postgresql://oltp_user:oltp_password@oltp_db:5432/oltp_db
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+    ports:
+      - "8082:8080"
+    command: >
+      bash -c "
+        airflow db init &&
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com &&
+        airflow webserver --port 8080 &
+        airflow scheduler
+      "
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      crm_db:
+        condition: service_healthy
+      oltp_db:
+        condition: service_healthy
+
   reports-api:
     build:
       context: ./reports-api
       dockerfile: Dockerfile
+    environment:
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
     ports:
       - "8001:8001"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
 
   bionicpro-auth:
     build:
@@ -155,3 +253,8 @@ services:
       - "3000:3000"
     depends_on:
       - bionicpro-auth
+
+volumes:
+  clickhouse-data:
+  crm-data:
+  oltp-data:
