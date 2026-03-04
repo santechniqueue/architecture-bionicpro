@@ -236,27 +236,25 @@ async def proxy_reports(
     session: SessionData = Depends(get_current_session),
     cfg: Settings = Depends(get_settings),
 ):
-    print("REPORTS COOKIE HEADER:", request.headers.get("cookie"))
     headers = {
         "Authorization": f"Bearer {session.access_token}",
-        "Accept": "application/octet-stream,application/json,text/plain,*/*",
+        "Accept": "application/json,text/plain,*/*",
     }
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         upstream = await client.get(f"{cfg.reports_api_url}/reports", headers=headers)
 
-    content_type = upstream.headers.get("content-type", "application/octet-stream")
-    disposition = upstream.headers.get(
-        "content-disposition",
-        'attachment; filename="report.bin"',
-    )
+    content_type = upstream.headers.get("content-type", "application/json")
 
     proxied = Response(
         content=upstream.content,
         status_code=upstream.status_code,
         media_type=content_type,
     )
-    proxied.headers["Content-Disposition"] = disposition
+
+    disposition = upstream.headers.get("content-disposition")
+    if disposition:
+        proxied.headers["Content-Disposition"] = disposition
 
     rotated_cookie = response.headers.get("set-cookie")
     if rotated_cookie:

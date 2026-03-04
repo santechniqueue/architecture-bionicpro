@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""
-Generates realistic test data for CRM and OLTP PostgreSQL databases.
-
-Usage:
-    pip install psycopg2-binary
-    python generate_data.py
-
-Or via Docker:
-    docker compose run --rm data-generator
-"""
 
 import os
 import random
@@ -16,10 +6,6 @@ import uuid
 from datetime import datetime, timedelta
 
 import psycopg2
-
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
 
 CRM_DSN = os.getenv(
     "CRM_DATABASE_URL",
@@ -30,7 +16,6 @@ OLTP_DSN = os.getenv(
     "postgresql://oltp_user:oltp_password@localhost:5435/oltp_db",
 )
 
-# Users matching Keycloak realm (prothetic_user role)
 USERS = [
     {
         "user_id": "prothetic1",
@@ -72,20 +57,13 @@ EVENT_TYPES = ["grip", "release", "rotate", "flex", "extend", "calibration", "id
 
 ORDER_STATUSES = ["delivered", "in_use", "maintenance"]
 
-# How many days of telemetry to generate
 TELEMETRY_DAYS = 30
-# Events per prosthesis per day
 EVENTS_PER_DAY = 200
 
-
-# ---------------------------------------------------------------------------
-# CRM data generation
-# ---------------------------------------------------------------------------
 
 def populate_crm(conn):
     cur = conn.cursor()
 
-    # Check if data already exists
     cur.execute("SELECT count(*) FROM customers")
     if cur.fetchone()[0] > 0:
         print("CRM: data already exists, skipping.")
@@ -94,7 +72,6 @@ def populate_crm(conn):
     prosthesis_counter = 0
 
     for user in USERS:
-        # Insert customer
         cur.execute(
             """
             INSERT INTO customers (user_id, full_name, email, phone, created_at, updated_at)
@@ -112,7 +89,6 @@ def populate_crm(conn):
         )
         customer_id = cur.fetchone()[0]
 
-        # Each user has 1-2 prostheses (orders)
         num_prostheses = random.randint(1, 2)
         for j in range(num_prostheses):
             prosthesis_counter += 1
@@ -154,20 +130,14 @@ def populate_crm(conn):
     print(f"CRM: inserted {len(USERS)} customers with prostheses.")
 
 
-# ---------------------------------------------------------------------------
-# OLTP telemetry data generation
-# ---------------------------------------------------------------------------
-
 def populate_oltp(conn, crm_conn):
     cur = conn.cursor()
 
-    # Check if data already exists
     cur.execute("SELECT count(*) FROM telemetry_events")
     if cur.fetchone()[0] > 0:
         print("OLTP: data already exists, skipping.")
         return
 
-    # Get prosthesis assignments from CRM
     crm_cur = crm_conn.cursor()
     crm_cur.execute(
         """
@@ -195,20 +165,17 @@ def populate_oltp(conn, crm_conn):
 
             for _ in range(EVENTS_PER_DAY):
                 event_ts = day_start + timedelta(
-                    seconds=random.randint(0, 16 * 3600)  # 7:00 - 23:00
+                    seconds=random.randint(0, 16 * 3600)
                 )
                 event_type = random.choice(EVENT_TYPES)
 
-                # Simulate realistic signal values
                 signal_value = random.gauss(0.5, 0.15)
                 signal_value = max(0.0, min(1.0, signal_value))
 
-                # Battery drains through the day
                 hours_since_start = (event_ts - day_start).total_seconds() / 3600
                 battery_level = max(0.1, 1.0 - (hours_since_start / 20) + random.gauss(0, 0.05))
                 battery_level = max(0.0, min(1.0, battery_level))
 
-                # Response time: mostly <100ms, some spikes
                 if random.random() < 0.9:
                     response_time_ms = random.randint(20, 95)
                 else:
@@ -253,10 +220,6 @@ def _insert_telemetry_batch(cur, batch):
         """
     )
 
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main():
     print("Connecting to CRM database...")

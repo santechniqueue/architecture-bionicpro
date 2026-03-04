@@ -1,6 +1,5 @@
 CREATE DATABASE IF NOT EXISTS bionicpro;
 
--- Staging: raw telemetry data from OLTP PostgreSQL
 CREATE TABLE IF NOT EXISTS bionicpro.telemetry_raw (
     event_id      String,
     user_id       String,
@@ -14,7 +13,6 @@ CREATE TABLE IF NOT EXISTS bionicpro.telemetry_raw (
 ) ENGINE = MergeTree()
 ORDER BY (user_id, prosthesis_id, event_ts);
 
--- Staging: CRM customer data
 CREATE TABLE IF NOT EXISTS bionicpro.crm_customers (
     user_id        String,
     full_name      String,
@@ -29,7 +27,6 @@ CREATE TABLE IF NOT EXISTS bionicpro.crm_customers (
 ) ENGINE = ReplacingMergeTree(ingested_at)
 ORDER BY (user_id, prosthesis_id);
 
--- Data mart: pre-aggregated report per user per prosthesis per day
 CREATE TABLE IF NOT EXISTS bionicpro.report_mart (
     user_id              String,
     prosthesis_id        String,

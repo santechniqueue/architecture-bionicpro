@@ -48,7 +48,6 @@ echo "Assigning CONFIGURE_TOTP to users who have not yet configured OTP..."
 USER_IDS=$(/opt/keycloak/bin/kcadm.sh get users -r "$REALM_NAME" | sed -n 's/.*"id" : "\(.*\)".*/\1/p')
 
 for USER_ID in $USER_IDS; do
-  # Check if user already has OTP credentials configured
   HAS_OTP=$(/opt/keycloak/bin/kcadm.sh get "users/${USER_ID}/credentials" -r "$REALM_NAME" \
     | grep -c '"type" : "otp"' || true)
 

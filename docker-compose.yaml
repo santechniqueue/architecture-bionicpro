@@ -180,7 +180,7 @@ services:
       AIRFLOW__CORE__FERNET_KEY: ""
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      _PIP_ADDITIONAL_REQUIREMENTS: "clickhouse-connect==0.8.14 apache-airflow-providers-postgres==5.13.1 apache-airflow-providers-http==4.13.2"
+      _PIP_ADDITIONAL_REQUIREMENTS: "clickhouse-connect==0.8.14 apache-airflow-providers-postgres==5.13.1 apache-airflow-providers-http==4.13.2 boto3==1.38.0"
       AIRFLOW_CONN_CRM_POSTGRES: postgresql://crm_user:crm_password@crm_db:5432/crm_db
       AIRFLOW_CONN_OLTP_POSTGRES: postgresql://oltp_user:oltp_password@oltp_db:5432/oltp_db
     volumes:
@@ -202,6 +202,34 @@ services:
       oltp_db:
         condition: service_healthy
 
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9010:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  cdn:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./cdn/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - cdn-cache:/var/cache/nginx/cdn
+    ports:
+      - "8084:8084"
+    depends_on:
+      minio:
+        condition: service_healthy
+
   reports-api:
     build:
       context: ./reports-api
@@ -209,10 +237,17 @@ services:
     environment:
       CLICKHOUSE_HOST: clickhouse
       CLICKHOUSE_PORT: "8123"
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET: bionicpro-reports
+      CDN_BASE_URL: http://localhost:8084
     ports:
       - "8001:8001"
     depends_on:
       clickhouse:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
   bionicpro-auth:
@@ -258,3 +293,5 @@ volumes:
   clickhouse-data:
   crm-data:
   oltp-data:
+  minio-data:
+  cdn-cache:

@@ -1,8 +1,6 @@
--- CRM Database Schema (simulates Bitrix24-like CRM)
-
 CREATE TABLE IF NOT EXISTS customers (
     id           SERIAL PRIMARY KEY,
-    user_id      VARCHAR(255) NOT NULL UNIQUE,  -- matches Keycloak preferred_username
+    user_id      VARCHAR(255) NOT NULL UNIQUE,
     full_name    VARCHAR(500) NOT NULL,
     email        VARCHAR(255),
     phone        VARCHAR(50),
@@ -24,9 +22,9 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE TABLE IF NOT EXISTS prostheses (
     id              SERIAL PRIMARY KEY,
     order_id        INTEGER NOT NULL REFERENCES orders(id),
-    prosthesis_id   VARCHAR(255) NOT NULL UNIQUE,  -- serial number
+    prosthesis_id   VARCHAR(255) NOT NULL UNIQUE,
     model           VARCHAR(255) NOT NULL,
-    type            VARCHAR(100) NOT NULL,         -- hand, forearm, leg, etc.
+    type            VARCHAR(100) NOT NULL,
     created_at      TIMESTAMP NOT NULL DEFAULT now()
 );
 

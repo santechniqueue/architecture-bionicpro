@@ -1,29 +1,25 @@
-"""
-ETL DAG: Extract data from CRM (PostgreSQL) and OLTP (PostgreSQL),
-transform and load into ClickHouse OLAP data mart.
-
-Schedule: daily at 03:00 UTC
-"""
-
 from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.providers.http.hooks.http import HttpHook
 
+import boto3
 import clickhouse_connect
 
-
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
 
 CLICKHOUSE_HOST = "clickhouse"
 CLICKHOUSE_PORT = 8123
 
-CRM_CONN_ID = "crm_postgres"          # Airflow Connection to CRM PostgreSQL
-OLTP_CONN_ID = "oltp_postgres"        # Airflow Connection to OLTP PostgreSQL
+CRM_CONN_ID = "crm_postgres"
+OLTP_CONN_ID = "oltp_postgres"
+
+S3_ENDPOINT_URL = "http://minio:9000"
+S3_ACCESS_KEY = "minioadmin"
+S3_SECRET_KEY = "minioadmin"
+S3_BUCKET = "bionicpro-reports"
+
+CDN_PURGE_URL = "http://cdn:8084/purge-cache"
 
 
 default_args = {
@@ -39,12 +35,7 @@ def _get_ch_client():
     return clickhouse_connect.get_client(host=CLICKHOUSE_HOST, port=CLICKHOUSE_PORT)
 
 
-# ---------------------------------------------------------------------------
-# Extract: CRM customers
-# ---------------------------------------------------------------------------
-
 def extract_crm_customers(**context):
-    """Extract customer + prosthesis data from CRM database."""
     hook = PostgresHook(postgres_conn_id=CRM_CONN_ID)
 
     sql = """
@@ -87,12 +78,7 @@ def extract_crm_customers(**context):
     return len(rows)
 
 
-# ---------------------------------------------------------------------------
-# Extract: OLTP telemetry
-# ---------------------------------------------------------------------------
-
 def extract_telemetry(**context):
-    """Extract telemetry events from the OLTP PostgreSQL database."""
     hook = PostgresHook(postgres_conn_id=OLTP_CONN_ID)
 
     sql = """
@@ -132,16 +118,7 @@ def extract_telemetry(**context):
     return len(rows)
 
 
-# ---------------------------------------------------------------------------
-# Transform + Load: build the report data mart
-# ---------------------------------------------------------------------------
-
 def build_report_mart(**context):
-    """
-    Aggregate telemetry data per user/prosthesis/day and join with CRM data.
-    Inserts into the report_mart ReplacingMergeTree — duplicates are handled
-    automatically by ClickHouse on merge.
-    """
     execution_date = context["ds"]
     since = (
         datetime.strptime(execution_date, "%Y-%m-%d") - timedelta(days=1)
@@ -193,9 +170,42 @@ def build_report_mart(**context):
     ch.command(sql)
 
 
-# ---------------------------------------------------------------------------
-# DAG definition
-# ---------------------------------------------------------------------------
+def invalidate_report_cache(**context):
+    import urllib.request
+
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=S3_ENDPOINT_URL,
+        aws_access_key_id=S3_ACCESS_KEY,
+        aws_secret_access_key=S3_SECRET_KEY,
+        region_name="us-east-1",
+    )
+
+    deleted = 0
+    paginator = s3.get_paginator("list_objects_v2")
+    try:
+        for page in paginator.paginate(Bucket=S3_BUCKET, Prefix="reports/"):
+            objects = [{"Key": obj["Key"]} for obj in page.get("Contents", [])]
+            if objects:
+                s3.delete_objects(
+                    Bucket=S3_BUCKET,
+                    Delete={"Objects": objects},
+                )
+                deleted += len(objects)
+    except Exception as exc:
+        print(f"S3 cleanup note: {exc}")
+
+    print(f"Deleted {deleted} cached report(s) from S3")
+
+    try:
+        req = urllib.request.Request(CDN_PURGE_URL, method="POST")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            print(f"CDN purge response: {resp.status} {resp.read().decode()}")
+    except Exception as exc:
+        print(f"CDN purge note (non-critical): {exc}")
+
+    return deleted
+
 
 with DAG(
     dag_id="bionicpro_etl_reports",
@@ -221,5 +231,9 @@ with DAG(
         python_callable=build_report_mart,
     )
 
-    # Extract tasks run in parallel, then mart is built
-    [task_extract_crm, task_extract_telemetry] >> task_build_mart
+    task_invalidate_cache = PythonOperator(
+        task_id="invalidate_report_cache",
+        python_callable=invalidate_report_cache,
+    )
+
+    [task_extract_crm, task_extract_telemetry] >> task_build_mart >> task_invalidate_cache

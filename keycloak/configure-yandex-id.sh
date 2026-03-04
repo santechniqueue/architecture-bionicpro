@@ -154,13 +154,6 @@ else
     -s "config.defaultScope=openid email profile" >/dev/null
 fi
 
-# Yandex Identity Hub is a standard OIDC provider.
-# Claims returned with "openid email profile" scope:
-#   sub               – Yandex numeric user ID (replaces the old "id" field)
-#   preferred_username – Yandex login (replaces the old "login" field)
-#   email             – primary email (replaces the old "default_email" field)
-#   name              – display name (replaces the old "display_name" / "real_name")
-#   picture           – avatar URL (replaces the old "default_avatar_id")
 echo "Creating IdP mappers..."
 ensure_idp_mapper "yandex-sub" "sub" "yandex_sub"
 ensure_idp_mapper "yandex-email" "email" "yandex_email"

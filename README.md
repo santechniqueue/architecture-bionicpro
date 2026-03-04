@@ -65,3 +65,19 @@ docker compose exec clickhouse clickhouse-client --query "SELECT user_id, prosth
 2. Нажать **Login**, авторизоваться как `prothetic1`
 3. Нажать **Download Report** - скачается CSV-файл с данными только этого пользователя 
 4. Залогиниться как `prothetic2`, скачать отчет, в нём будут только данные `prothetic2`. Данные других пользователей недоступны.
+
+# Задание 3. Снижение нагрузки на базу данных
+
+## Проверка
+
+1. Открыть http://localhost:3000
+2. Войти как `prothetic1`
+3. Нажать `Download Report` 
+4. Браузер скачает CSV-файл через `CDN` (`localhost:8084`). В теле ответа будет "generated"
+5. Нажать `Download Report` повторно. В теле ответа будет "cache"
+6. Удалить кэш вручную:
+   ```commandline
+    curl -s http://localhost:8001/reports/cache -X DELETE
+   ```
+7. Скачать заново отчет. В теле ответа снова будет "generated"
+8. Зайти на http://localhost:9001 (minioadmin/minioadmin). В бакете bionicpro-reports должны быть сгенерированные для пользователей отчеты.

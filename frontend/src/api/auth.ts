@@ -46,6 +46,22 @@ export const downloadReport = async (): Promise<void> => {
     throw new Error(`Request failed with status ${response.status}`);
   }
 
+  const contentType = response.headers.get('Content-Type') || '';
+
+  if (contentType.includes('application/json')) {
+    const data = await response.json();
+    if (data.report_url) {
+      const anchor = document.createElement('a');
+      anchor.href = data.report_url;
+      anchor.download = '';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      return;
+    }
+    throw new Error('No report URL in response');
+  }
+
   const blob = await response.blob();
   const disposition = response.headers.get('Content-Disposition');
   const filenameMatch = disposition?.match(/filename="?([^"]+)"?/);

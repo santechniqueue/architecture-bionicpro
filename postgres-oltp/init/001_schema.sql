@@ -1,13 +1,11 @@
--- OLTP Database Schema — telemetry from prosthesis chips
-
 CREATE TABLE IF NOT EXISTS telemetry_events (
     event_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id          VARCHAR(255) NOT NULL,
     prosthesis_id    VARCHAR(255) NOT NULL,
-    event_type       VARCHAR(100) NOT NULL,    -- grip, release, rotate, flex, extend, calibration
+    event_type       VARCHAR(100) NOT NULL,
     signal_value     DOUBLE PRECISION NOT NULL,
-    battery_level    REAL NOT NULL,             -- 0.0 .. 1.0
-    response_time_ms INTEGER NOT NULL,          -- milliseconds
+    battery_level    REAL NOT NULL,
+    response_time_ms INTEGER NOT NULL,
     event_ts         TIMESTAMP NOT NULL DEFAULT now()
 );
 
