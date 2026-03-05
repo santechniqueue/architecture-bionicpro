@@ -19,27 +19,21 @@ OLTP_DSN = os.getenv(
 USERS = [
     {
         "user_id": "prothetic1",
-        "full_name": "Иванов Алексей Петрович",
-        "email": "prothetic1@bionicpro.ru",
+        "full_name": "Prothetic One",
+        "email": "prothetic1@example.com",
         "phone": "+7-900-111-1111",
     },
     {
         "user_id": "prothetic2",
-        "full_name": "Сидорова Мария Ивановна",
-        "email": "prothetic2@bionicpro.ru",
+        "full_name": "Prothetic Two",
+        "email": "prothetic2@example.com",
         "phone": "+7-900-222-2222",
     },
     {
-        "user_id": "alex.johnson",
-        "full_name": "Alex Johnson",
-        "email": "alex.johnson@example.com",
+        "user_id": "prothetic3",
+        "full_name": "Prothetic Three",
+        "email": "prothetic3@example.com",
         "phone": "+7-900-333-3333",
-    },
-    {
-        "user_id": "john.doe",
-        "full_name": "John Doe",
-        "email": "john.doe@example.com",
-        "phone": "+7-900-444-4444",
     },
 ]
 
