@@ -1,6 +1,21 @@
 {
     "realm": "reports-realm",
     "enabled": true,
+    "sslRequired": "NONE",
+    "accessTokenLifespan": 120,
+    "otpPolicyType": "totp",
+    "otpPolicyAlgorithm": "HmacSHA1",
+    "otpPolicyInitialCounter": 0,
+    "otpPolicyDigits": 6,
+    "otpPolicyLookAheadWindow": 1,
+    "otpPolicyPeriod": 30,
+  "otpPolicyCodeReusable": false,
+    "ssoSessionIdleTimeout": 1800,
+    "ssoSessionMaxLifespan": 28800,
+    "clientSessionIdleTimeout": 1800,
+    "clientSessionMaxLifespan": 28800,
+    "revokeRefreshToken": true,
+    "refreshTokenMaxReuse": 0,
     "roles": {
       "realm": [
         {
@@ -114,15 +129,44 @@
         "clientId": "reports-frontend",
         "enabled": true,
         "publicClient": true,
-        "redirectUris": ["http://localhost:3000/*"],
-        "webOrigins": ["http://localhost:3000"],
-        "directAccessGrantsEnabled": true
+        "standardFlowEnabled": false,
+        "directAccessGrantsEnabled": false,
+        "redirectUris": [
+          "http://localhost:3000/*"
+        ],
+        "webOrigins": [
+          "http://localhost:3000"
+        ]
+      },
+      {
+        "clientId": "bionicpro-auth",
+        "name": "bionicpro-auth",
+        "enabled": true,
+        "protocol": "openid-connect",
+        "publicClient": false,
+        "clientAuthenticatorType": "client-secret",
+        "secret": "super-secret-auth-client",
+        "standardFlowEnabled": true,
+        "directAccessGrantsEnabled": false,
+        "serviceAccountsEnabled": false,
+        "frontchannelLogout": true,
+        "redirectUris": [
+          "http://localhost:3000/*",
+          "http://localhost:8000/*"
+        ],
+        "webOrigins": [
+          "http://localhost:3000",
+          "http://localhost:8000"
+        ],
+        "attributes": {
+          "pkce.code.challenge.method": "S256"
+        }
       },
       {
         "clientId": "reports-api",
         "enabled": true,
         "clientAuthenticatorType": "client-secret",
-        "secret": "oNwoLQdvJAvRcL89SydqCWCe5ry1jMgq", 
+        "secret": "oNwoLQdvJAvRcL89SydqCWCe5ry1jMgq",
         "bearerOnly": true
       }
     ]

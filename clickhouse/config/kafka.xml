@@ -1,0 +1,6 @@
+<clickhouse>
+    <kafka>
+        <session_timeout_ms>30000</session_timeout_ms>
+        <max_poll_interval_ms>300000</max_poll_interval_ms>
+    </kafka>
+</clickhouse>
